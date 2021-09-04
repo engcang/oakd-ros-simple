@@ -8,22 +8,20 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 find_package(depthai CONFIG REQUIRED)
 if(depthai_FOUND)
-  message(WARNING "depthai FOUND")
-  message(WARNING ${depthai_VERSION})
-  message(WARNING ${depthai_DIR})
+  message(WARNING "depthai FOUND, Version:" ${depthai_VERSION} " directory: " ${depthai_DIR})
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  roslib
   sensor_msgs
+  vision_msgs
   cv_bridge
 )
 
-find_package(OpenCV4 REQUIRED)
+find_package(OpenCV REQUIRED)
 if(OPENCV_FOUND)
-  message(WARNING "OpenCV FOUND")
-  message(WARNING ${OpenCV_VERSION})
-  message(WARNING ${OpenCV_INCLUDE_DIRS})
+  message(WARNING "OpenCV FOUND, Version:" ${OpenCV_VERSION} " directory: " ${OpenCV_INCLUDE_DIRS})
 endif()
 
 catkin_package()

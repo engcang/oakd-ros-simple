@@ -8,11 +8,16 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
+  <build_depend>roslib</build_depend>
   <build_depend>sensor_msgs</build_depend>
+  <build_depend>vision_msgs</build_depend>
   <build_depend>cv_bridge</build_depend>
 
+
   <exec_depend>roscpp</exec_depend>
+  <exec_depend>roslib</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
 
   <export>

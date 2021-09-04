@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+
+<!--  <node name="visualizer" pkg="rviz" type="rviz" args="-d $(find traj_gen)/rviz.rviz"/>-->
+
+<!--  <param name="/cfg_file" value="$(find traj_gen)/scripts/yolov4-tiny-3l-obj.cfg"/>-->
+<!--  <node name="person_detector" pkg="traj_gen" type="ros_opencv_dnn.py" output="screen"/>-->
+
+
+  <!--  MAIN code -->
+  <param name="/img_width" value="480"/>
+  <param name="/img_height" value="320"/> 
+  <param name="/first_cam_topic" value="/d455/depth/rgb_image_raw/compressed"/>
+  <node name="oakd_ros_node" pkg="oakd-ros" type="oakd-ros_node" output="screen"/>
+  <!-- launch-prefix="gdb -ex run --> <!--args" -->
+
+</launch>
