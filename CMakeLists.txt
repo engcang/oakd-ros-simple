@@ -15,7 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib
   sensor_msgs
-  vision_msgs
   cv_bridge
 )
 
