@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.4)
-project(oakd-ros)
+project(oakd_ros)
 
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++14") # if want to use auto in Lamda function, should be more recent than c++14
+set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 
@@ -16,12 +16,29 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   sensor_msgs
   cv_bridge
+  pcl_conversions
+  pcl_ros
+  message_generation
+  message_runtime
 )
 
 find_package(OpenCV REQUIRED)
 if(OPENCV_FOUND)
   message(WARNING "OpenCV FOUND, Version:" ${OpenCV_VERSION} " directory: " ${OpenCV_INCLUDE_DIRS})
 endif()
+
+
+
+add_message_files(
+  FILES
+    bbox.msg
+    bboxes.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+    std_msgs
+)
 
 catkin_package()
 
@@ -35,5 +52,8 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME}_node src/main.cpp)
+add_executable(${PROJECT_NAME}_node src/main_ros.cpp)
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)
+
+add_executable(${PROJECT_NAME}_test src/main_cv.cpp)
+target_link_libraries(${PROJECT_NAME}_test ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)

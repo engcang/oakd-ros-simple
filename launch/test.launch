@@ -7,13 +7,8 @@
 <!--  <node name="person_detector" pkg="traj_gen" type="ros_opencv_dnn.py" output="screen"/>-->
 
 
-  <param name="/topic_prefix" value="/oakd"/> 
   <param name="/fps_rgb_yolo" value="15.0"/> <!-- data rate -->
   <param name="/fps_stereo_depth" value="10.0"/> <!-- data rate -->
-
-  <!-- getting raw and compressed both is possible -->
-  <param name="/get_raw" value="false"/> 
-  <param name="/get_compressed" value="true"/> 
 
   <param name="/get_stereo_ir" value="true"/> 
   <param name="/get_rgb" value="true"/> 
@@ -33,7 +28,7 @@
   <param name="/confidence_threshold" value="0.5"/> 
   <param name="/iou_threshold" value="0.3"/> 
 
-  <node name="oakd_ros_node" pkg="oakd_ros" type="oakd_ros_node" output="screen"/>
+  <node name="oakd_ros_node" pkg="oakd_ros" type="oakd_ros_test" output="screen"/>
   <!-- launch-prefix="gdb -ex run --> <!--args" -->
 
 </launch>

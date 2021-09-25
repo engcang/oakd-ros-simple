@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>oakd-ros</name>
+  <name>oakd_ros</name>
   <version>0.0.0</version>
-  <description>The oakd-ros package</description>
+  <description>The oakd_ros package</description>
   <maintainer email="eungchang_mason@kaist.ac.kr">Eungchang Mason Lee</maintainer>
   <license>TODO</license>
 
@@ -11,12 +11,17 @@
   <build_depend>roslib</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>cv_bridge</build_depend>
-
+  <build_depend>pcl_conversions</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>message_generation</build_depend>
 
   <exec_depend>roscpp</exec_depend>
   <exec_depend>roslib</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>pcl_conversions</exec_depend>
+  <exec_depend>pcl_ros</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
   <export>
     <!-- Other tools can request additional information be placed here -->
