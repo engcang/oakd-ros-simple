@@ -14,6 +14,7 @@
 #include <ros/package.h>
 #include <std_msgs/Header.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/Imu.h>
 #include <sensor_msgs/CompressedImage.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <oakd_ros/bboxes.h>
@@ -38,6 +39,7 @@ void signal_handler(sig_atomic_t s) {
 }
 
 using namespace std;
+using namespace std::chrono;
 
 
 sensor_msgs::PointCloud2 cloud2msg(pcl::PointCloud<pcl::PointXYZ> cloud, std::string frame_id = "camera_link")
@@ -55,10 +57,12 @@ class oakd_ros_class{
   public:
     dai::Pipeline pipeline;
     ////////// auto can be used
+    std::shared_ptr<dai::node::IMU> IMU_node            = pipeline.create<dai::node::IMU>();
     std::shared_ptr<dai::node::ColorCamera> camRgb      = pipeline.create<dai::node::ColorCamera>();
     std::shared_ptr<dai::node::MonoCamera> monoLeft     = pipeline.create<dai::node::MonoCamera>();
     std::shared_ptr<dai::node::MonoCamera> monoRight    = pipeline.create<dai::node::MonoCamera>();
     std::shared_ptr<dai::node::StereoDepth> stereodepth = pipeline.create<dai::node::StereoDepth>();
+    std::shared_ptr<dai::node::XLinkOut> xoutIMU        = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutRgb        = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutLeft       = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutRight      = pipeline.create<dai::node::XLinkOut>();
@@ -69,6 +73,7 @@ class oakd_ros_class{
     std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
     std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
 
+    std::shared_ptr<dai::DataOutputQueue> imuQueue;
     std::shared_ptr<dai::DataOutputQueue> rgbQueue;
     std::shared_ptr<dai::DataOutputQueue> leftQueue;
     std::shared_ptr<dai::DataOutputQueue> rightQueue;
@@ -83,7 +88,7 @@ class oakd_ros_class{
     sensor_msgs::CompressedImage l_img_comp_msg, r_img_comp_msg, rgb_img_comp_msg, nn_img_comp_msg;
 
     bool initialized=false, first=false;
-    bool get_stereo_ir, get_rgb, get_stereo_depth, get_stereo_disparity, get_YOLO, get_pointcloud, get_raw, get_compressed;
+    bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_stereo_disparity, get_YOLO, get_pointcloud, get_raw, get_compressed;
     string topic_prefix, blob_file, class_file;
     int infer_img_width, infer_img_height, class_num, thread_num;
     double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range;
@@ -94,7 +99,7 @@ class oakd_ros_class{
 
     ///// ros and tf
     ros::NodeHandle nh;
-    ros::Publisher l_pub, l_comp_pub, r_pub, r_comp_pub, rgb_pub, rgb_comp_pub, d_pub, dis_pub, pcl_pub, nn_pub, nn_comp_pub, nn_bbox_pub;
+    ros::Publisher imu_pub, l_pub, l_comp_pub, r_pub, r_comp_pub, rgb_pub, rgb_comp_pub, d_pub, dis_pub, pcl_pub, nn_pub, nn_comp_pub, nn_bbox_pub;
     void main_initialize();
 
 
@@ -106,6 +111,7 @@ class oakd_ros_class{
       nh.param("/fps_stereo_depth", fps_stereo_depth, 30.0);
       nh.param<bool>("/get_raw", get_raw, false);
       nh.param<bool>("/get_compressed", get_compressed, false);
+      nh.param<bool>("/get_imu", get_imu, false);
       nh.param<bool>("/get_rgb", get_rgb, false);
       nh.param<bool>("/get_stereo_ir", get_stereo_ir, false);
       nh.param<bool>("/get_stereo_depth", get_stereo_depth, false);
@@ -152,6 +158,8 @@ class oakd_ros_class{
         if (get_compressed)
           nn_comp_pub = nh.advertise<sensor_msgs::CompressedImage>(topic_prefix+"/yolo/image_raw/compressed", 10);
       }
+      if (get_imu)
+        imu_pub = nh.advertise<sensor_msgs::Imu>(topic_prefix+"/imu",10);
 
       ///// Init
       path = ros::package::getPath("oakd_ros");
@@ -161,6 +169,7 @@ class oakd_ros_class{
 };
 
 void oakd_ros_class::main_initialize(){
+  xoutIMU->setStreamName("imu");
   xoutRgb->setStreamName("rgb");
   xoutLeft->setStreamName("left");
   xoutRight->setStreamName("right");
@@ -169,7 +178,13 @@ void oakd_ros_class::main_initialize(){
   nnOut->setStreamName("detections");
   xoutInference->setStreamName("detected_img");
 
-  if(get_rgb or get_YOLO){
+  if (get_imu){
+    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, 150);
+    IMU_node->setBatchReportThreshold(1);
+    IMU_node->setMaxBatchReports(20);
+    IMU_node->out.link(xoutIMU->input);
+  }
+  if(get_rgb){
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
@@ -179,7 +194,34 @@ void oakd_ros_class::main_initialize(){
   // camRgb->setPreviewSize(infer_img_width, infer_img_height);
   // camRgb->setInterleaved(false);
     camRgb->isp.link(xoutRgb->input);
-    camRgb->isp.link(Manipulator->inputImage);
+    
+    if(get_YOLO){
+      camRgb->isp.link(Manipulator->inputImage);
+      Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
+      Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+      Manipulator->inputImage.setBlocking(false);
+      Manipulator->out.link(xoutInference->input);
+      Manipulator->out.link(detectionNetwork->input);
+      detectionNetwork->setBlobPath(path+blob_file);
+      detectionNetwork->setNumInferenceThreads(thread_num);
+      detectionNetwork->setConfidenceThreshold(confidence_threshold);
+      detectionNetwork->setIouThreshold(iou_threshold);
+      detectionNetwork->setNumClasses(class_num);
+      detectionNetwork->input.setBlocking(false);
+      detectionNetwork->setCoordinateSize(4);
+      detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+      detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
+      detectionNetwork->out.link(nnOut->input);
+      // detectionNetwork->passthrough.link(xoutInference->input);
+      ifstream readfile;
+      readfile.open(path+class_file);
+      while (!readfile.eof()){
+        string str;
+        getline(readfile, str);
+        class_names.push_back(str);
+      }
+      readfile.close();
+    }
   }
 
   if(get_stereo_ir or get_stereo_depth or get_stereo_disparity or get_pointcloud){
@@ -207,33 +249,6 @@ void oakd_ros_class::main_initialize(){
     stereodepth->syncedRight.link(xoutRight->input);
     stereodepth->depth.link(xoutDepth->input);
     stereodepth->disparity.link(xoutDisparity->input);
-  }
-
-  if(get_YOLO){
-    detectionNetwork->setBlobPath(path+blob_file);
-    detectionNetwork->setNumInferenceThreads(thread_num);
-    detectionNetwork->setConfidenceThreshold(confidence_threshold);
-    detectionNetwork->setIouThreshold(iou_threshold);
-    detectionNetwork->setNumClasses(class_num);
-    detectionNetwork->input.setBlocking(false);
-    detectionNetwork->setCoordinateSize(4);
-    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
-    Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
-    Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
-    Manipulator->inputImage.setBlocking(false);
-    Manipulator->out.link(detectionNetwork->input);
-    Manipulator->out.link(xoutInference->input);
-    detectionNetwork->out.link(nnOut->input);
-    // detectionNetwork->passthrough.link(xoutInference->input);
-    ifstream readfile;
-    readfile.open(path+class_file);
-    while (!readfile.eof()){
-      string str;
-      getline(readfile, str);
-      class_names.push_back(str);
-    }
-    readfile.close();
   }
 
   initialized=true;

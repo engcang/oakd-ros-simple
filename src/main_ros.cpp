@@ -19,8 +19,8 @@ int main(int argc, char **argv)
 
   /// for point cloud
   dai::CalibrationHandler calibData = device.readCalibration();
-  // oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RGB, oak_handler.camRgb->getIspWidth(), oak_handler.camRgb->getIspHeight());
   oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, oak_handler.monoRight->getResolutionWidth(), oak_handler.monoRight->getResolutionHeight());
+  // oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RGB, oak_handler.camRgb->getIspWidth(), oak_handler.camRgb->getIspHeight());
 
   double fx = oak_handler.intrinsics[0][0]; double cx = oak_handler.intrinsics[0][2];
   double fy = oak_handler.intrinsics[1][1]; double cy = oak_handler.intrinsics[1][2];
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     if(oak_handler.initialized){
       if(!oak_handler.first){
         ////////// auto can be used
+        oak_handler.imuQueue = device.getOutputQueue("imu", 150, false);
         oak_handler.leftQueue = device.getOutputQueue("left", 5, false);
         oak_handler.rightQueue = device.getOutputQueue("right", 5, false);
         oak_handler.DepthQueue = device.getOutputQueue("depth", 5, false);
@@ -48,6 +49,36 @@ int main(int argc, char **argv)
         std_msgs::Header header;
         header.stamp = ros::Time::now();
 
+        if (oak_handler.get_imu){
+          vector<std::shared_ptr<dai::IMUData>> inPassIMU = oak_handler.imuQueue->tryGetAll<dai::IMUData>();
+          if (inPassIMU.size()>0){
+            sensor_msgs::Imu imu_msg;
+            
+            std::vector<dai::IMUPacket> imuPackets = inPassIMU.back()->packets;
+            
+            dai::IMUReportAccelerometer accelVal = imuPackets.back().acceleroMeter;
+            dai::IMUReportGyroscope gyro_val = imuPackets.back().gyroscope;
+            dai::IMUReportRotationVectorWAcc rotation_val = imuPackets.back().rotationVector;
+            
+            if ( abs(duration_cast<milliseconds>(accelVal.timestamp.get()-gyro_val.timestamp.get()).count()) <1 and
+              abs(duration_cast<milliseconds>(accelVal.timestamp.get()-rotation_val.timestamp.get()).count()) <1){
+              imu_msg.linear_acceleration.x = accelVal.x; imu_msg.linear_acceleration.y = accelVal.y;
+              imu_msg.linear_acceleration.z = accelVal.z;
+            
+              imu_msg.angular_velocity.x = gyro_val.x; imu_msg.angular_velocity.y = gyro_val.y;
+              imu_msg.angular_velocity.z = gyro_val.z;
+
+              imu_msg.orientation.x = rotation_val.i; imu_msg.orientation.y = rotation_val.j;
+              imu_msg.orientation.z = rotation_val.k; imu_msg.orientation.w = rotation_val.real;
+
+              oak_handler.imu_pub.publish(imu_msg);
+            }
+            else{
+              cout << "IMU not synchronized" << endl;
+            }
+          }
+        }
+
         if (oak_handler.get_rgb){
           vector<std::shared_ptr<dai::ImgFrame>> inPassRgb = oak_handler.rgbQueue->tryGetAll<dai::ImgFrame>();
           if (inPassRgb.size()>0){
@@ -61,6 +92,48 @@ int main(int argc, char **argv)
             if (oak_handler.get_compressed){
               bridge_rgb.toCompressedImageMsg(oak_handler.rgb_img_comp_msg);
               oak_handler.rgb_comp_pub.publish(oak_handler.rgb_img_comp_msg);
+            }
+          }
+          if (oak_handler.get_YOLO){
+            vector<std::shared_ptr<dai::ImgDetections>> inPassNN = oak_handler.nNetDataQueue->tryGetAll<dai::ImgDetections>();
+            vector<std::shared_ptr<dai::ImgFrame>> inPassNN_img = oak_handler.nNetImgQueue->tryGetAll<dai::ImgFrame>();
+            oakd_ros::bboxes bboxes_msg;
+            if (inPassNN_img.size()>0){
+              FrameDetect = inPassNN_img.back()->getCvFrame();
+              if (inPassNN.size()>0){
+                std::vector<dai::ImgDetection> detections = inPassNN.back()->detections;
+                for(auto& detection : detections) {
+                  int x1 = detection.xmin * FrameDetect.cols;
+                  int y1 = detection.ymin * FrameDetect.rows;
+                  int x2 = detection.xmax * FrameDetect.cols;
+                  int y2 = detection.ymax * FrameDetect.rows;
+
+                  std::string labelStr = to_string(detection.label);
+                  if(detection.label < oak_handler.class_names.size()) {
+                      labelStr = oak_handler.class_names[detection.label];
+                  }
+                  cv::putText(FrameDetect, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                  std::stringstream confStr;
+                  confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
+                  cv::putText(FrameDetect, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                  cv::rectangle(FrameDetect, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
+                  
+                  oakd_ros::bbox box;
+                  box.score=detection.confidence; box.id = detection.label; box.Class = oak_handler.class_names[detection.label];
+                  box.x = x1; box.y = y1; box.width = x2-x1; box.height = y2-y1;
+                  bboxes_msg.bboxes.push_back(box);                
+                }
+                oak_handler.nn_bbox_pub.publish(bboxes_msg);
+              }
+              cv_bridge::CvImage bridge_nn = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, FrameDetect);
+              if (oak_handler.get_raw){
+                bridge_nn.toImageMsg(oak_handler.nn_img_msg);
+                oak_handler.nn_pub.publish(oak_handler.nn_img_msg);
+              }
+              if (oak_handler.get_compressed){
+                bridge_nn.toCompressedImageMsg(oak_handler.nn_img_comp_msg);
+                oak_handler.nn_comp_pub.publish(oak_handler.nn_img_comp_msg);
+              }
             }
           }
         }
@@ -134,49 +207,6 @@ int main(int argc, char **argv)
           }
         }
 
-
-        if (oak_handler.get_YOLO){
-          vector<std::shared_ptr<dai::ImgDetections>> inPassNN = oak_handler.nNetDataQueue->tryGetAll<dai::ImgDetections>();
-          vector<std::shared_ptr<dai::ImgFrame>> inPassNN_img = oak_handler.nNetImgQueue->tryGetAll<dai::ImgFrame>();
-          oakd_ros::bboxes bboxes_msg;
-          if (inPassNN_img.size()>0){
-            FrameDetect = inPassNN_img.back()->getCvFrame();
-            if (inPassNN.size()>0){
-              std::vector<dai::ImgDetection> detections = inPassNN.back()->detections;
-              for(auto& detection : detections) {
-                int x1 = detection.xmin * FrameDetect.cols;
-                int y1 = detection.ymin * FrameDetect.rows;
-                int x2 = detection.xmax * FrameDetect.cols;
-                int y2 = detection.ymax * FrameDetect.rows;
-
-                std::string labelStr = to_string(detection.label);
-                if(detection.label < oak_handler.class_names.size()) {
-                    labelStr = oak_handler.class_names[detection.label];
-                }
-                cv::putText(FrameDetect, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-                std::stringstream confStr;
-                confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
-                cv::putText(FrameDetect, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-                cv::rectangle(FrameDetect, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
-                
-                oakd_ros::bbox box;
-                box.score=detection.confidence; box.id = detection.label; box.Class = oak_handler.class_names[detection.label];
-                box.x = x1; box.y = y1; box.width = x2-x1; box.height = y2-y1;
-                bboxes_msg.bboxes.push_back(box);                
-              }
-              oak_handler.nn_bbox_pub.publish(bboxes_msg);
-            }
-            cv_bridge::CvImage bridge_nn = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, FrameDetect);
-            if (oak_handler.get_raw){
-              bridge_nn.toImageMsg(oak_handler.nn_img_msg);
-              oak_handler.nn_pub.publish(oak_handler.nn_img_msg);
-            }
-            if (oak_handler.get_compressed){
-              bridge_nn.toCompressedImageMsg(oak_handler.nn_img_comp_msg);
-              oak_handler.nn_comp_pub.publish(oak_handler.nn_img_comp_msg);
-            }
-          }
-        }
       }
     }
   }
