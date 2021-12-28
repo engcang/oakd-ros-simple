@@ -42,8 +42,6 @@ $ make install
 ```shell
 $ cd ~/your_workspace (check directory)
 
-Check directory (your_workspace)
-
 $ catkin build -Ddepthai_DIR=<your_workspace>/src/oakd-ros-simple/depthai-core/build/install/lib/cmake/depthai
 
 or
