@@ -4,6 +4,8 @@ project(oakd_ros)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(depthai CONFIG REQUIRED)
@@ -54,6 +56,3 @@ include_directories(
 
 add_executable(${PROJECT_NAME}_node src/main_ros.cpp)
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)
-
-add_executable(${PROJECT_NAME}_test src/main_cv.cpp)
-target_link_libraries(${PROJECT_NAME}_test ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)

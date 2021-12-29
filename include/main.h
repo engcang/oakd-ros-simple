@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <unistd.h>
 
 ///// ROS
 #include <ros/ros.h>
@@ -39,14 +40,13 @@ void signal_handler(sig_atomic_t s) {
 }
 
 using namespace std;
-using namespace std::chrono;
-
 
 sensor_msgs::PointCloud2 cloud2msg(pcl::PointCloud<pcl::PointXYZ> cloud, std::string frame_id = "camera_link")
 {
   sensor_msgs::PointCloud2 cloud_ROS;
   pcl::toROSMsg(cloud, cloud_ROS);
   cloud_ROS.header.frame_id = frame_id;
+  cloud_ROS.header.stamp = ros::Time::now();
   return cloud_ROS;
 }
 
@@ -67,10 +67,7 @@ class oakd_ros_class{
     std::shared_ptr<dai::node::XLinkOut> xoutLeft       = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutRight      = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutDepth      = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutDisparity  = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> xoutInference  = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::ImageManip> Manipulator  = pipeline.create<dai::node::ImageManip>();
-    std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
     std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
 
     std::shared_ptr<dai::DataOutputQueue> imuQueue;
@@ -78,19 +75,18 @@ class oakd_ros_class{
     std::shared_ptr<dai::DataOutputQueue> leftQueue;
     std::shared_ptr<dai::DataOutputQueue> rightQueue;
     std::shared_ptr<dai::DataOutputQueue> DepthQueue;
-    std::shared_ptr<dai::DataOutputQueue> DisparityQueue;
     std::shared_ptr<dai::DataOutputQueue> nNetDataQueue;
     std::shared_ptr<dai::DataOutputQueue> nNetImgQueue;
 
     string path;
 
-    sensor_msgs::Image l_img_msg, r_img_msg, rgb_img_msg, depth_img_msg, disparity_img_msg, nn_img_msg;
+    sensor_msgs::Image l_img_msg, r_img_msg, rgb_img_msg, depth_img_msg, nn_img_msg;
     sensor_msgs::CompressedImage l_img_comp_msg, r_img_comp_msg, rgb_img_comp_msg, nn_img_comp_msg;
 
-    bool initialized=false, first=false;
+    bool initialized=false;
     bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_stereo_disparity, get_YOLO, get_pointcloud, get_raw, get_compressed;
     string topic_prefix, blob_file, class_file;
-    int infer_img_width, infer_img_height, class_num, thread_num;
+    int fps_IMU, infer_img_width, infer_img_height, class_num, thread_num, bilateral_sigma, depth_confidence;
     double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range;
     vector<string> class_names;
     //for PCL, calib data
@@ -99,7 +95,7 @@ class oakd_ros_class{
 
     ///// ros and tf
     ros::NodeHandle nh;
-    ros::Publisher imu_pub, l_pub, l_comp_pub, r_pub, r_comp_pub, rgb_pub, rgb_comp_pub, d_pub, dis_pub, pcl_pub, nn_pub, nn_comp_pub, nn_bbox_pub;
+    ros::Publisher imu_pub, l_pub, l_comp_pub, r_pub, r_comp_pub, rgb_pub, rgb_comp_pub, d_pub, pcl_pub, nn_pub, nn_comp_pub, nn_bbox_pub;
     void main_initialize();
 
 
@@ -109,6 +105,7 @@ class oakd_ros_class{
       nh.param<std::string>("/topic_prefix", topic_prefix, "/oakd");
       nh.param("/fps_rgb_yolo", fps_rgb_yolo, 30.0);
       nh.param("/fps_stereo_depth", fps_stereo_depth, 30.0);
+      nh.param("/fps_IMU", fps_IMU, 200);
       nh.param<bool>("/get_raw", get_raw, false);
       nh.param<bool>("/get_compressed", get_compressed, false);
       nh.param<bool>("/get_imu", get_imu, false);
@@ -120,6 +117,8 @@ class oakd_ros_class{
       nh.param("/pcl_max_range", pcl_max_range, 6.0);
       nh.param<bool>("/get_YOLO", get_YOLO, false);
       nh.param("/thread_num", thread_num, 3);
+      nh.param("/bilateral_sigma", bilateral_sigma, 500);
+      nh.param("/depth_confidence", depth_confidence, 200);
       nh.param<std::string>("/blob_file", blob_file, "/blob_files/tiny-yolo-v4.blob");
       nh.param<std::string>("/class_file", class_file, "/blob_files/class.txt");
       nh.param("/infer_img_width", infer_img_width, 416);
@@ -147,8 +146,6 @@ class oakd_ros_class{
       }
       if (get_stereo_depth)
         d_pub = nh.advertise<sensor_msgs::Image>(topic_prefix+"/depth/image_raw", 10);
-      if (get_stereo_disparity)
-        dis_pub = nh.advertise<sensor_msgs::Image>(topic_prefix+"/disparity/image_raw", 10);
       if (get_pointcloud)
         pcl_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix+"/pointcloud", 10);
       if (get_YOLO){
@@ -168,20 +165,23 @@ class oakd_ros_class{
     }
 };
 
+
+
+
+//////////// can be separated into .cpp source file
 void oakd_ros_class::main_initialize(){
   xoutIMU->setStreamName("imu");
   xoutRgb->setStreamName("rgb");
   xoutLeft->setStreamName("left");
   xoutRight->setStreamName("right");
   xoutDepth->setStreamName("depth");
-  xoutDisparity->setStreamName("disparity");
   nnOut->setStreamName("detections");
   xoutInference->setStreamName("detected_img");
 
   if (get_imu){
-    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, 150);
-    IMU_node->setBatchReportThreshold(1);
-    IMU_node->setMaxBatchReports(20);
+    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
+    // IMU_node->setBatchReportThreshold(1);
+    IMU_node->setMaxBatchReports(1);
     IMU_node->out.link(xoutIMU->input);
   }
   if(get_rgb){
@@ -189,14 +189,15 @@ void oakd_ros_class::main_initialize(){
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     camRgb->setFps(fps_rgb_yolo);
-    camRgb->setIspScale(1, 3); // (1, 3, 10, 27)
-    camRgb->initialControl.setManualFocus(135);
-  // camRgb->setPreviewSize(infer_img_width, infer_img_height);
-  // camRgb->setInterleaved(false);
-    camRgb->isp.link(xoutRgb->input);
+    // camRgb->initialControl.setManualFocus(135);
+    camRgb->setPreviewSize(640, 480);
+    camRgb->setInterleaved(false);
+    camRgb->preview.link(xoutRgb->input);
     
     if(get_YOLO){
-      camRgb->isp.link(Manipulator->inputImage);
+      std::shared_ptr<dai::node::ImageManip> Manipulator  = pipeline.create<dai::node::ImageManip>();
+      std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
+      camRgb->preview.link(Manipulator->inputImage);
       Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
       Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
       Manipulator->inputImage.setBlocking(false);
@@ -224,22 +225,24 @@ void oakd_ros_class::main_initialize(){
     }
   }
 
-  if(get_stereo_ir or get_stereo_depth or get_stereo_disparity or get_pointcloud){
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+  if(get_stereo_ir || get_stereo_depth || get_pointcloud){
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setFps(fps_stereo_depth);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setFps(fps_stereo_depth);
 
-    stereodepth->initialConfig.setConfidenceThreshold(165);
+    stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
     stereodepth->setLeftRightCheck(true);
-    stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_3x3);
+    stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
+    stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
+      // stereo->setInputResolution(1280, 720);
     // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
     // stereodepth->initialConfig.setLeftRightCheckThreshold(1);
-    // stereodepth->setExtendedDisparity(false);
-    // stereodepth->setSubpixel(false);
+    stereodepth->setExtendedDisparity(false);
+    stereodepth->setSubpixel(true);
     monoLeft->out.link(stereodepth->left);
     monoRight->out.link(stereodepth->right);
 
@@ -248,7 +251,6 @@ void oakd_ros_class::main_initialize(){
     stereodepth->syncedLeft.link(xoutLeft->input);
     stereodepth->syncedRight.link(xoutRight->input);
     stereodepth->depth.link(xoutDepth->input);
-    stereodepth->disparity.link(xoutDisparity->input);
   }
 
   initialized=true;

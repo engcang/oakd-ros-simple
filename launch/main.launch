@@ -1,37 +1,35 @@
 <?xml version="1.0"?>
 <launch>
 
-<!--  <node name="visualizer" pkg="rviz" type="rviz" args="-d $(find traj_gen)/rviz.rviz"/>-->
-
-<!--  <param name="/cfg_file" value="$(find traj_gen)/scripts/yolov4-tiny-3l-obj.cfg"/>-->
-<!--  <node name="person_detector" pkg="traj_gen" type="ros_opencv_dnn.py" output="screen"/>-->
-
-
   <param name="/topic_prefix" value="/oakd"/> 
-  <param name="/fps_rgb_yolo" value="15.0"/> <!-- data rate -->
-  <param name="/fps_stereo_depth" value="10.0"/> <!-- data rate -->
+  <param name="/fps_rgb_yolo" value="30.0"/> <!-- data rate -->
+  <param name="/fps_stereo_depth" value="30.0"/> <!-- data rate -->
+  <param name="/fps_IMU" value="400"/> <!-- data rate, integer -->
 
-  <!-- getting raw and compressed both is possible -->
+  <!-- image type - getting raw and compressed both is possible -->
   <param name="/get_raw" value="false"/> 
   <param name="/get_compressed" value="true"/> 
 
   <param name="/get_imu" value="true"/> 
-  <param name="/get_stereo_ir" value="false"/> 
-  <param name="/get_rgb" value="true"/> <!-- must be true, idk why, pending debugging -->
-  <param name="/get_stereo_depth" value="false"/> 
-  <param name="/get_stereo_disparity" value="false"/> 
+  <param name="/get_stereo_ir" value="true"/> 
+  <param name="/get_rgb" value="true"/>  <!-- must be true when using YOLO -->
+  <param name="/get_stereo_depth" value="true"/> 
+  <param name="/get_stereo_disparity" value="true"/> 
   <param name="/get_pointcloud" value="true"/>
-  <param name="/pcl_max_range" value="6.0"/>
+
+  <param name="/pcl_max_range" value="8.0"/>
+  <param name="/depth_confidence" value="150"/>  <!-- 0~255 -->
+  <param name="/bilateral_sigma" value="3"/>  <!-- 0 ~ 65535, depth filter -->
 
 <!-- setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->
-  <param name="/get_YOLO" value="true"/> <!-- must be true, idk why, pending debugging -->
-  <param name="/thread_num" value="2"/> 
+  <param name="/get_YOLO" value="true"/>
+  <param name="/thread_num" value="2"/>  <!-- best is 2 -->
   <param name="/blob_file" value="/blob_files/tiny-yolo-v4.blob"/>
   <param name="/class_file" value="/blob_files/class.txt"/>
   <param name="/infer_img_width" value="416"/>
   <param name="/infer_img_height" value="416"/> 
   <param name="/class_num" value="80"/> 
-  <param name="/confidence_threshold" value="0.5"/> 
+  <param name="/confidence_threshold" value="0.4"/> 
   <param name="/iou_threshold" value="0.3"/> 
 
   <node name="oakd_ros_node" pkg="oakd_ros" type="oakd_ros_node" output="screen"/>
