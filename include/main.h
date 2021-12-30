@@ -56,27 +56,6 @@ sensor_msgs::PointCloud2 cloud2msg(pcl::PointCloud<pcl::PointXYZ> cloud, std::st
 class oakd_ros_class{
   public:
     dai::Pipeline pipeline;
-    ////////// auto can be used
-    std::shared_ptr<dai::node::IMU> IMU_node            = pipeline.create<dai::node::IMU>();
-    std::shared_ptr<dai::node::ColorCamera> camRgb      = pipeline.create<dai::node::ColorCamera>();
-    std::shared_ptr<dai::node::MonoCamera> monoLeft     = pipeline.create<dai::node::MonoCamera>();
-    std::shared_ptr<dai::node::MonoCamera> monoRight    = pipeline.create<dai::node::MonoCamera>();
-    std::shared_ptr<dai::node::StereoDepth> stereodepth = pipeline.create<dai::node::StereoDepth>();
-    std::shared_ptr<dai::node::XLinkOut> xoutIMU        = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutRgb        = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutLeft       = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutRight      = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutDepth      = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> xoutInference  = pipeline.create<dai::node::XLinkOut>();
-    std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
-
-    std::shared_ptr<dai::DataOutputQueue> imuQueue;
-    std::shared_ptr<dai::DataOutputQueue> rgbQueue;
-    std::shared_ptr<dai::DataOutputQueue> leftQueue;
-    std::shared_ptr<dai::DataOutputQueue> rightQueue;
-    std::shared_ptr<dai::DataOutputQueue> DepthQueue;
-    std::shared_ptr<dai::DataOutputQueue> nNetDataQueue;
-    std::shared_ptr<dai::DataOutputQueue> nNetImgQueue;
 
     string path;
 
@@ -84,14 +63,14 @@ class oakd_ros_class{
     sensor_msgs::CompressedImage l_img_comp_msg, r_img_comp_msg, rgb_img_comp_msg, nn_img_comp_msg;
 
     bool initialized=false;
-    bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_stereo_disparity, get_YOLO, get_pointcloud, get_raw, get_compressed;
+    bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_YOLO, get_pointcloud, get_raw, get_compressed;
     string topic_prefix, blob_file, class_file;
     int fps_IMU, infer_img_width, infer_img_height, class_num, thread_num, bilateral_sigma, depth_confidence;
     double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range;
     vector<string> class_names;
     //for PCL, calib data
     vector<vector<float>> intrinsics;
-    int width, height;
+    int depth_width, depth_height;
 
     ///// ros and tf
     ros::NodeHandle nh;
@@ -112,7 +91,6 @@ class oakd_ros_class{
       nh.param<bool>("/get_rgb", get_rgb, false);
       nh.param<bool>("/get_stereo_ir", get_stereo_ir, false);
       nh.param<bool>("/get_stereo_depth", get_stereo_depth, false);
-      nh.param<bool>("/get_stereo_disparity", get_stereo_disparity, false);
       nh.param<bool>("/get_pointcloud", get_pointcloud, false);
       nh.param("/pcl_max_range", pcl_max_range, 6.0);
       nh.param<bool>("/get_YOLO", get_YOLO, false);
@@ -170,21 +148,21 @@ class oakd_ros_class{
 
 //////////// can be separated into .cpp source file
 void oakd_ros_class::main_initialize(){
-  xoutIMU->setStreamName("imu");
-  xoutRgb->setStreamName("rgb");
-  xoutLeft->setStreamName("left");
-  xoutRight->setStreamName("right");
-  xoutDepth->setStreamName("depth");
-  nnOut->setStreamName("detections");
-  xoutInference->setStreamName("detected_img");
-
   if (get_imu){
+    std::shared_ptr<dai::node::IMU> IMU_node = pipeline.create<dai::node::IMU>();
+    std::shared_ptr<dai::node::XLinkOut> xoutIMU = pipeline.create<dai::node::XLinkOut>();
+    xoutIMU->setStreamName("imu");
+
     IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
-    // IMU_node->setBatchReportThreshold(1);
-    IMU_node->setMaxBatchReports(1);
+    IMU_node->setBatchReportThreshold(1);
+    IMU_node->setMaxBatchReports(20);
     IMU_node->out.link(xoutIMU->input);
   }
   if(get_rgb){
+    std::shared_ptr<dai::node::ColorCamera> camRgb = pipeline.create<dai::node::ColorCamera>();
+    std::shared_ptr<dai::node::XLinkOut> xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    xoutRgb->setStreamName("rgb");
+
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
@@ -197,6 +175,11 @@ void oakd_ros_class::main_initialize(){
     if(get_YOLO){
       std::shared_ptr<dai::node::ImageManip> Manipulator  = pipeline.create<dai::node::ImageManip>();
       std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
+      std::shared_ptr<dai::node::XLinkOut> xoutInference  = pipeline.create<dai::node::XLinkOut>();
+      std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
+      nnOut->setStreamName("detections");
+      xoutInference->setStreamName("detected_img");
+
       camRgb->preview.link(Manipulator->inputImage);
       Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
       Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
@@ -224,12 +207,107 @@ void oakd_ros_class::main_initialize(){
       readfile.close();
     }
   }
+  if (!get_rgb && get_YOLO){
+    std::shared_ptr<dai::node::ColorCamera> camRgb = pipeline.create<dai::node::ColorCamera>();
+    std::shared_ptr<dai::node::ImageManip> Manipulator  = pipeline.create<dai::node::ImageManip>();
+    std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
+    std::shared_ptr<dai::node::XLinkOut> xoutInference  = pipeline.create<dai::node::XLinkOut>();
+    std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
+    nnOut->setStreamName("detections");
+    xoutInference->setStreamName("detected_img");
 
-  if(get_stereo_ir || get_stereo_depth || get_pointcloud){
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(fps_rgb_yolo);
+    // camRgb->initialControl.setManualFocus(135);
+    camRgb->setInterleaved(false);
+    camRgb->preview.link(Manipulator->inputImage);
+
+    Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
+    Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    Manipulator->inputImage.setBlocking(false);
+    Manipulator->out.link(xoutInference->input);
+    Manipulator->out.link(detectionNetwork->input);
+    detectionNetwork->setBlobPath(path+blob_file);
+    detectionNetwork->setNumInferenceThreads(thread_num);
+    detectionNetwork->setConfidenceThreshold(confidence_threshold);
+    detectionNetwork->setIouThreshold(iou_threshold);
+    detectionNetwork->setNumClasses(class_num);
+    detectionNetwork->input.setBlocking(false);
+    detectionNetwork->setCoordinateSize(4);
+    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
+    detectionNetwork->out.link(nnOut->input);
+    // detectionNetwork->passthrough.link(xoutInference->input);
+    ifstream readfile;
+    readfile.open(path+class_file);
+    while (!readfile.eof()){
+      string str;
+      getline(readfile, str);
+      class_names.push_back(str);
+    }
+    readfile.close();
+  }
+
+  if(get_stereo_ir){
+    std::shared_ptr<dai::node::MonoCamera> monoLeft     = pipeline.create<dai::node::MonoCamera>();
+    std::shared_ptr<dai::node::MonoCamera> monoRight    = pipeline.create<dai::node::MonoCamera>();
+    std::shared_ptr<dai::node::XLinkOut> xoutLeft       = pipeline.create<dai::node::XLinkOut>();
+    std::shared_ptr<dai::node::XLinkOut> xoutRight      = pipeline.create<dai::node::XLinkOut>();
+    xoutLeft->setStreamName("left");
+    xoutRight->setStreamName("right");
+
+    // monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setFps(fps_stereo_depth);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    // monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setFps(fps_stereo_depth);
+
+    if (get_stereo_depth || get_pointcloud){
+      std::shared_ptr<dai::node::StereoDepth> stereodepth = pipeline.create<dai::node::StereoDepth>();
+      std::shared_ptr<dai::node::XLinkOut> xoutDepth      = pipeline.create<dai::node::XLinkOut>();
+      xoutDepth->setStreamName("depth");
+
+      stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
+      stereodepth->setLeftRightCheck(true);
+      stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
+      stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
+      stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
+      // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
+      // stereodepth->initialConfig.setLeftRightCheckThreshold(1);
+      stereodepth->setExtendedDisparity(false);
+      stereodepth->setSubpixel(true);
+      monoLeft->out.link(stereodepth->left);
+      monoRight->out.link(stereodepth->right);
+      stereodepth->syncedLeft.link(xoutLeft->input);
+      stereodepth->syncedRight.link(xoutRight->input);
+      stereodepth->depth.link(xoutDepth->input);
+      
+      depth_width = monoRight->getResolutionWidth();
+      depth_height= monoRight->getResolutionHeight();
+    }
+    else{
+      monoLeft->out.link(xoutLeft->input);
+      monoRight->out.link(xoutRight->input);
+    }
+  }
+  if(!get_stereo_ir && (get_stereo_depth || get_pointcloud)){
+    std::shared_ptr<dai::node::MonoCamera> monoLeft     = pipeline.create<dai::node::MonoCamera>();
+    std::shared_ptr<dai::node::MonoCamera> monoRight    = pipeline.create<dai::node::MonoCamera>();
+    std::shared_ptr<dai::node::StereoDepth> stereodepth = pipeline.create<dai::node::StereoDepth>();
+    std::shared_ptr<dai::node::XLinkOut> xoutDepth      = pipeline.create<dai::node::XLinkOut>();
+    xoutDepth->setStreamName("depth");
+
+    // monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setFps(fps_stereo_depth);
+    // monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_480_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setFps(fps_stereo_depth);
 
@@ -238,7 +316,6 @@ void oakd_ros_class::main_initialize(){
     stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
     stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
-      // stereo->setInputResolution(1280, 720);
     // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
     // stereodepth->initialConfig.setLeftRightCheckThreshold(1);
     stereodepth->setExtendedDisparity(false);
@@ -246,11 +323,10 @@ void oakd_ros_class::main_initialize(){
     monoLeft->out.link(stereodepth->left);
     monoRight->out.link(stereodepth->right);
 
-    // monoLeft->out.link(xoutLeft->input);
-    // monoRight->out.link(xoutRight->input);
-    stereodepth->syncedLeft.link(xoutLeft->input);
-    stereodepth->syncedRight.link(xoutRight->input);
     stereodepth->depth.link(xoutDepth->input);
+    
+    depth_width = monoRight->getResolutionWidth();
+    depth_height= monoRight->getResolutionHeight();
   }
 
   initialized=true;

@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 
   /// for point cloud
   dai::CalibrationHandler calibData = device.readCalibration();
-  oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, oak_handler.monoRight->getResolutionWidth(), oak_handler.monoRight->getResolutionHeight());
+  oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, oak_handler.depth_width, oak_handler.depth_height);
 
   double fx = oak_handler.intrinsics[0][0]; double cx = oak_handler.intrinsics[0][2];
   double fy = oak_handler.intrinsics[1][1]; double cy = oak_handler.intrinsics[1][2];
@@ -31,41 +31,37 @@ int main(int argc, char **argv)
   while(!oak_handler.initialized){
     usleep(50000);
   }
-  ////////// auto can be used
-  oak_handler.imuQueue = device.getOutputQueue("imu", 30, false);
-  oak_handler.leftQueue = device.getOutputQueue("left", 30, false);
-  oak_handler.rightQueue = device.getOutputQueue("right", 30, false);
-  oak_handler.DepthQueue = device.getOutputQueue("depth", 30, false);
-  oak_handler.rgbQueue = device.getOutputQueue("rgb", 30, false);
-  oak_handler.nNetDataQueue = device.getOutputQueue("detections", 30, false);
-  oak_handler.nNetImgQueue = device.getOutputQueue("detected_img", 30, false);
 
   std::thread imu_thread, rgb_thread, yolo_thread, stereo_thread, depth_pcl_thread;
+
+
   if (oak_handler.get_imu){
+    std::shared_ptr<dai::DataOutputQueue> imuQueue = device.getOutputQueue("imu", 50, false);
     imu_thread = std::thread([&]() {
       while(ros::ok()){
-        std::shared_ptr<dai::IMUData> inPassIMU = oak_handler.imuQueue->tryGet<dai::IMUData>();
+        std::shared_ptr<dai::IMUData> inPassIMU = imuQueue->tryGet<dai::IMUData>();
         if (inPassIMU != nullptr){
-          sensor_msgs::Imu imu_msg;
-          imu_msg.header.stamp = ros::Time::now();
+          for (int i = 0; i < inPassIMU->packets.size(); ++i)
+          {
+            sensor_msgs::Imu imu_msg;
+            imu_msg.header.stamp = ros::Time::now();
+            dai::IMUPacket imuPackets = inPassIMU->packets[i];
+            
+            dai::IMUReportAccelerometer accelVal = imuPackets.acceleroMeter;
+            dai::IMUReportGyroscope gyro_val = imuPackets.gyroscope;
+            dai::IMUReportRotationVectorWAcc rotation_val = imuPackets.rotationVector;
+
+            imu_msg.linear_acceleration.x = accelVal.x; imu_msg.linear_acceleration.y = accelVal.y; imu_msg.linear_acceleration.z = accelVal.z;
           
-          dai::IMUPacket imuPackets = inPassIMU->packets[inPassIMU->packets.size() - 1];
-          
-          dai::IMUReportAccelerometer accelVal = imuPackets.acceleroMeter;
-          dai::IMUReportGyroscope gyro_val = imuPackets.gyroscope;
-          dai::IMUReportRotationVectorWAcc rotation_val = imuPackets.rotationVector;
+            imu_msg.angular_velocity.x = gyro_val.x; imu_msg.angular_velocity.y = gyro_val.y; imu_msg.angular_velocity.z = gyro_val.z;
 
-          imu_msg.linear_acceleration.x = accelVal.x; imu_msg.linear_acceleration.y = accelVal.y; imu_msg.linear_acceleration.z = accelVal.z;
-        
-          imu_msg.angular_velocity.x = gyro_val.x; imu_msg.angular_velocity.y = gyro_val.y; imu_msg.angular_velocity.z = gyro_val.z;
+            imu_msg.orientation.x = rotation_val.i; imu_msg.orientation.y = rotation_val.j;
+            imu_msg.orientation.z = rotation_val.k; imu_msg.orientation.w = rotation_val.real;
 
-          imu_msg.orientation.x = rotation_val.i; imu_msg.orientation.y = rotation_val.j;
-          imu_msg.orientation.z = rotation_val.k; imu_msg.orientation.w = rotation_val.real;
-
-          oak_handler.imu_pub.publish(imu_msg);
+            oak_handler.imu_pub.publish(imu_msg);
+          }
         }
-
-        std::chrono::milliseconds dura(1);
+        std::chrono::microseconds dura(1200);
         std::this_thread::sleep_for(dura);
       }
     });
@@ -73,10 +69,11 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_rgb){
+    std::shared_ptr<dai::DataOutputQueue> rgbQueue = device.getOutputQueue("rgb", 4, false);
     rgb_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
-        std::shared_ptr<dai::ImgFrame> inPassRgb = oak_handler.rgbQueue->tryGet<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> inPassRgb = rgbQueue->tryGet<dai::ImgFrame>();
         if (inPassRgb != nullptr){
           FrameRgb = inPassRgb->getCvFrame(); // important
           header.stamp = ros::Time::now();
@@ -96,12 +93,15 @@ int main(int argc, char **argv)
     });
   }
 
-  if (oak_handler.get_rgb && oak_handler.get_YOLO){
+
+  if (oak_handler.get_YOLO){
+    std::shared_ptr<dai::DataOutputQueue> nNetDataQueue = device.getOutputQueue("detections", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> nNetImgQueue = device.getOutputQueue("detected_img", 4, false);
     yolo_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
-        std::shared_ptr<dai::ImgDetections> inPassNN = oak_handler.nNetDataQueue->tryGet<dai::ImgDetections>();
-        std::shared_ptr<dai::ImgFrame> inPassNN_img = oak_handler.nNetImgQueue->tryGet<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgDetections> inPassNN = nNetDataQueue->tryGet<dai::ImgDetections>();
+        std::shared_ptr<dai::ImgFrame> inPassNN_img = nNetImgQueue->tryGet<dai::ImgFrame>();
         oakd_ros::bboxes bboxes_msg;
         if (inPassNN_img != nullptr ){
           FrameDetect = inPassNN_img->getCvFrame();
@@ -149,11 +149,13 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_stereo_ir){
+    std::shared_ptr<dai::DataOutputQueue> leftQueue = device.getOutputQueue("left", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> rightQueue = device.getOutputQueue("right", 4, false);
     stereo_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
-        std::shared_ptr<dai::ImgFrame> inPassLeft = oak_handler.leftQueue->tryGet<dai::ImgFrame>();
-        std::shared_ptr<dai::ImgFrame> inPassRight = oak_handler.rightQueue->tryGet<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> inPassLeft = leftQueue->tryGet<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> inPassRight = rightQueue->tryGet<dai::ImgFrame>();
         header.stamp = ros::Time::now();
         if (inPassLeft != nullptr){
           FrameLeft = inPassLeft->getFrame();
@@ -185,11 +187,13 @@ int main(int argc, char **argv)
     });
   }
 
+
   if (oak_handler.get_stereo_depth || oak_handler.get_pointcloud){
+    std::shared_ptr<dai::DataOutputQueue> DepthQueue = device.getOutputQueue("depth", 4, false);
     depth_pcl_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
-        std::shared_ptr<dai::ImgFrame> inPassDepth = oak_handler.DepthQueue->tryGet<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> inPassDepth = DepthQueue->tryGet<dai::ImgFrame>();
         if (inPassDepth != nullptr){
           FrameDepth = inPassDepth->getFrame();
           header.stamp = ros::Time::now();

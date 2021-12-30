@@ -12,9 +12,8 @@
 
   <param name="/get_imu" value="true"/> 
   <param name="/get_stereo_ir" value="true"/> 
-  <param name="/get_rgb" value="true"/>  <!-- must be true when using YOLO -->
+  <param name="/get_rgb" value="false"/> 
   <param name="/get_stereo_depth" value="true"/> 
-  <param name="/get_stereo_disparity" value="true"/> 
   <param name="/get_pointcloud" value="true"/>
 
   <param name="/pcl_max_range" value="8.0"/>
