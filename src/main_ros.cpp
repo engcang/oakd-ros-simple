@@ -44,6 +44,7 @@ int main(int argc, char **argv)
           for (int i = 0; i < inPassIMU->packets.size(); ++i)
           {
             sensor_msgs::Imu imu_msg;
+            imu_msg.header.frame_id = oak_handler.topic_prefix+"_frame";
             imu_msg.header.stamp = ros::Time::now();
             dai::IMUPacket imuPackets = inPassIMU->packets[i];
             
