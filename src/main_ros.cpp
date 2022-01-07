@@ -62,7 +62,7 @@ int main(int argc, char **argv)
             oak_handler.imu_pub.publish(imu_msg);
           }
         }
-        std::chrono::microseconds dura(1200);
+        std::chrono::microseconds dura(1000);
         std::this_thread::sleep_for(dura);
       }
     });
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_rgb){
-    std::shared_ptr<dai::DataOutputQueue> rgbQueue = device.getOutputQueue("rgb", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> rgbQueue = device.getOutputQueue("rgb", 8, false);
     rgb_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
@@ -96,8 +96,8 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_YOLO){
-    std::shared_ptr<dai::DataOutputQueue> nNetDataQueue = device.getOutputQueue("detections", 4, false);
-    std::shared_ptr<dai::DataOutputQueue> nNetImgQueue = device.getOutputQueue("detected_img", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> nNetDataQueue = device.getOutputQueue("detections", 8, false);
+    std::shared_ptr<dai::DataOutputQueue> nNetImgQueue = device.getOutputQueue("detected_img", 8, false);
     yolo_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
@@ -150,8 +150,8 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_stereo_ir){
-    std::shared_ptr<dai::DataOutputQueue> leftQueue = device.getOutputQueue("left", 4, false);
-    std::shared_ptr<dai::DataOutputQueue> rightQueue = device.getOutputQueue("right", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> leftQueue = device.getOutputQueue("left", 8, false);
+    std::shared_ptr<dai::DataOutputQueue> rightQueue = device.getOutputQueue("right", 8, false);
     stereo_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 
 
   if (oak_handler.get_stereo_depth || oak_handler.get_pointcloud){
-    std::shared_ptr<dai::DataOutputQueue> DepthQueue = device.getOutputQueue("depth", 4, false);
+    std::shared_ptr<dai::DataOutputQueue> DepthQueue = device.getOutputQueue("depth", 8, false);
     depth_pcl_thread = std::thread([&]() {
       std_msgs::Header header;
       while(ros::ok()){

@@ -4,7 +4,7 @@
   <param name="/topic_prefix" value="/oakd"/> 
   <param name="/fps_rgb_yolo" value="30.0"/> <!-- data rate -->
   <param name="/fps_stereo_depth" value="30.0"/> <!-- data rate -->
-  <param name="/fps_IMU" value="400"/> <!-- data rate, integer -->
+  <param name="/fps_IMU" value="100"/> <!-- data rate, integer -->
 
   <!-- image type - getting raw and compressed both is possible -->
   <param name="/get_raw" value="false"/> 
@@ -12,7 +12,7 @@
 
   <param name="/get_imu" value="true"/> 
   <param name="/get_stereo_ir" value="true"/> 
-  <param name="/get_rgb" value="false"/> 
+  <param name="/get_rgb" value="true"/> 
   <param name="/get_stereo_depth" value="true"/> 
   <param name="/get_pointcloud" value="true"/>
 
@@ -21,7 +21,7 @@
   <param name="/bilateral_sigma" value="3"/>  <!-- 0 ~ 65535, depth filter -->
 
 <!-- setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->
-  <param name="/get_YOLO" value="true"/>
+  <param name="/get_YOLO" value="false"/>
   <param name="/thread_num" value="2"/>  <!-- best is 2 -->
   <param name="/blob_file" value="/blob_files/tiny-yolo-v4.blob"/>
   <param name="/class_file" value="/blob_files/class.txt"/>

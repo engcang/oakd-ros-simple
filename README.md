@@ -2,6 +2,9 @@
 + OAK-D (OpenCV AI Kit camera) ROS simple codes with C++ for myself
 + Edited the original `depthai-ros-examples` repo from official manufacturer - [link](https://github.com/luxonis/depthai-ros-examples)
 
+<br>
+
++ Check the result video - [here](https://youtu.be/0Wla_efIOn0)
 
   <p align="left">
   <img src="pcl.png" width="400"/>

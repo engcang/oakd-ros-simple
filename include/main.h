@@ -155,7 +155,7 @@ void oakd_ros_class::main_initialize(){
 
     IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
     IMU_node->setBatchReportThreshold(1);
-    IMU_node->setMaxBatchReports(20);
+    IMU_node->setMaxBatchReports(28);
     IMU_node->out.link(xoutIMU->input);
   }
   if(get_rgb){
@@ -168,7 +168,7 @@ void oakd_ros_class::main_initialize(){
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     camRgb->setFps(fps_rgb_yolo);
     // camRgb->initialControl.setManualFocus(135);
-    camRgb->setPreviewSize(640, 480);
+    camRgb->setPreviewSize(640, 400);
     camRgb->setInterleaved(false);
     camRgb->preview.link(xoutRgb->input);
     
