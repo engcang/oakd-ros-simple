@@ -71,6 +71,10 @@ class oakd_ros_class{
     //for PCL, calib data
     vector<vector<float>> intrinsics;
     int depth_width, depth_height;
+ 
+    bool use_spatialFilter, use_temporalFilter, use_speckleFilter;
+    float spatialFilter_alpha, temporalFilter_alpha;
+    int spatialFilter_holefilling_radius, spatialFilter_iteration_num, speckleFilter_range;
 
     ///// ros and tf
     ros::NodeHandle nh;
@@ -104,6 +108,14 @@ class oakd_ros_class{
       nh.param("/class_num", class_num, 80);
       nh.param("/confidence_threshold", confidence_threshold, 0.7);
       nh.param("/iou_threshold", iou_threshold, 0.7);
+      nh.param<bool>("/use_spatialFilter", use_spatialFilter, true);
+      nh.param<bool>("/use_temporalFilter", use_temporalFilter, true);
+      nh.param<bool>("/use_speckleFilter", use_speckleFilter, true);
+      nh.param("/spatialFilter_holefilling_radius", spatialFilter_holefilling_radius, 2);
+      nh.param("/spatialFilter_iteration_num", spatialFilter_iteration_num, 1);
+      nh.param("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
+      nh.param("/temporalFilter_alpha", temporalFilter_alpha, 0.4);
+      nh.param("/speckleFilter_range", speckleFilter_range, 50);
 
       ///// sub pub
       if (get_rgb){
@@ -274,13 +286,31 @@ void oakd_ros_class::main_initialize(){
 
       stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
       stereodepth->setLeftRightCheck(true);
+      stereodepth->initialConfig.setLeftRightCheckThreshold(5);
       stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
       stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
       stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
       // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
-      // stereodepth->initialConfig.setLeftRightCheckThreshold(1);
       stereodepth->setExtendedDisparity(false);
       stereodepth->setSubpixel(true);
+      dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
+      if (use_spatialFilter){
+        depth_config.postProcessing.spatialFilter.enable = true;
+        depth_config.postProcessing.spatialFilter.holeFillingRadius = spatialFilter_holefilling_radius;
+        depth_config.postProcessing.spatialFilter.numIterations = spatialFilter_iteration_num;
+        depth_config.postProcessing.spatialFilter.alpha = spatialFilter_alpha;
+      }
+      if (use_temporalFilter){
+        depth_config.postProcessing.temporalFilter.enable = true;
+        depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
+        depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
+      }
+      if (use_speckleFilter){
+        depth_config.postProcessing.speckleFilter.enable = true;
+        depth_config.postProcessing.speckleFilter.speckleRange = speckleFilter_range;
+      }
+      stereodepth->initialConfig.set(depth_config);
+
       monoLeft->out.link(stereodepth->left);
       monoRight->out.link(stereodepth->right);
       stereodepth->syncedLeft.link(xoutLeft->input);
@@ -313,13 +343,31 @@ void oakd_ros_class::main_initialize(){
 
     stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
     stereodepth->setLeftRightCheck(true);
+    stereodepth->initialConfig.setLeftRightCheckThreshold(5);
     stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
     stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
     // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
-    // stereodepth->initialConfig.setLeftRightCheckThreshold(1);
     stereodepth->setExtendedDisparity(false);
     stereodepth->setSubpixel(true);
+    dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
+    if (use_spatialFilter){
+      depth_config.postProcessing.spatialFilter.enable = true;
+      depth_config.postProcessing.spatialFilter.holeFillingRadius = spatialFilter_holefilling_radius;
+      depth_config.postProcessing.spatialFilter.numIterations = spatialFilter_iteration_num;
+      depth_config.postProcessing.spatialFilter.alpha = spatialFilter_alpha;
+    }
+    if (use_temporalFilter){
+      depth_config.postProcessing.temporalFilter.enable = true;
+      depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
+      depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
+    }
+    if (use_speckleFilter){
+      depth_config.postProcessing.speckleFilter.enable = true;
+      depth_config.postProcessing.speckleFilter.speckleRange = speckleFilter_range;
+    }
+    stereodepth->initialConfig.set(depth_config);
+
     monoLeft->out.link(stereodepth->left);
     monoRight->out.link(stereodepth->right);
 
