@@ -113,8 +113,8 @@ class oakd_ros_class{
       nh.param<bool>("/use_speckleFilter", use_speckleFilter, true);
       nh.param("/spatialFilter_holefilling_radius", spatialFilter_holefilling_radius, 2);
       nh.param("/spatialFilter_iteration_num", spatialFilter_iteration_num, 1);
-      nh.param("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
-      nh.param("/temporalFilter_alpha", temporalFilter_alpha, 0.4);
+      nh.param<float>("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
+      nh.param<float>("/temporalFilter_alpha", temporalFilter_alpha, 0.4);
       nh.param("/speckleFilter_range", speckleFilter_range, 50);
 
       ///// sub pub
