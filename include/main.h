@@ -221,7 +221,6 @@ void oakd_ros_class::main_initialize(){
   }
   if (!get_rgb && get_YOLO){
     std::shared_ptr<dai::node::ColorCamera> camRgb = pipeline.create<dai::node::ColorCamera>();
-    std::shared_ptr<dai::node::ImageManip> Manipulator  = pipeline.create<dai::node::ImageManip>();
     std::shared_ptr<dai::node::YoloDetectionNetwork> detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
     std::shared_ptr<dai::node::XLinkOut> xoutInference  = pipeline.create<dai::node::XLinkOut>();
     std::shared_ptr<dai::node::XLinkOut> nnOut = pipeline.create<dai::node::XLinkOut>();
@@ -234,13 +233,10 @@ void oakd_ros_class::main_initialize(){
     camRgb->setFps(fps_rgb_yolo);
     // camRgb->initialControl.setManualFocus(135);
     camRgb->setInterleaved(false);
-    camRgb->preview.link(Manipulator->inputImage);
+    camRgb->setPreviewSize(infer_img_width, infer_img_height);
+    camRgb->preview.link(detectionNetwork->input);
+    camRgb->preview.link(xoutInference->input);
 
-    Manipulator->initialConfig.setResizeThumbnail(infer_img_width, infer_img_height);
-    Manipulator->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
-    Manipulator->inputImage.setBlocking(false);
-    Manipulator->out.link(xoutInference->input);
-    Manipulator->out.link(detectionNetwork->input);
     detectionNetwork->setBlobPath(path+blob_file);
     detectionNetwork->setNumInferenceThreads(thread_num);
     detectionNetwork->setConfidenceThreshold(confidence_threshold);
@@ -317,8 +313,13 @@ void oakd_ros_class::main_initialize(){
 
       monoLeft->out.link(stereodepth->left);
       monoRight->out.link(stereodepth->right);
+
       // stereodepth->syncedLeft.link(xoutLeft->input);
       // stereodepth->syncedRight.link(xoutRight->input);
+      stereodepth->left.setBlocking(false);
+      stereodepth->right.setBlocking(false);
+      stereodepth->left.setQueueSize(1);
+      stereodepth->right.setQueueSize(1);
       stereodepth->depth.link(xoutDepth->input);
       
       depth_width = monoRight->getResolutionWidth();
@@ -372,6 +373,10 @@ void oakd_ros_class::main_initialize(){
     monoLeft->out.link(stereodepth->left);
     monoRight->out.link(stereodepth->right);
 
+    stereodepth->left.setBlocking(false);
+    stereodepth->right.setBlocking(false);
+    stereodepth->left.setQueueSize(1);
+    stereodepth->right.setQueueSize(1);
     stereodepth->depth.link(xoutDepth->input);
     
     depth_width = monoRight->getResolutionWidth();

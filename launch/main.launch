@@ -12,7 +12,7 @@
 
   <!-- use or not -->
   <param name="/get_imu" value="true"/> 
-  <param name="/get_rgb" value="true"/> 
+  <param name="/get_rgb" value="false"/> 
 
   <param name="/get_stereo_ir" value="true"/> 
   <param name="/get_stereo_depth" value="true"/> 
@@ -33,7 +33,7 @@
 
 <!-- setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->
   <param name="/get_YOLO" value="true"/>
-  <param name="/thread_num" value="2"/>  <!-- best is 2 -->
+  <param name="/thread_num" value="1"/>  <!-- best is 2 -->
   <param name="/blob_file" value="/blob_files/tiny-yolo-v4.blob"/>
   <param name="/class_file" value="/blob_files/class.txt"/>
   <param name="/infer_img_width" value="416"/>
