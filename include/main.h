@@ -108,9 +108,9 @@ class oakd_ros_class{
       nh.param("/class_num", class_num, 80);
       nh.param("/confidence_threshold", confidence_threshold, 0.7);
       nh.param("/iou_threshold", iou_threshold, 0.7);
-      nh.param<bool>("/use_spatialFilter", use_spatialFilter, true);
-      nh.param<bool>("/use_temporalFilter", use_temporalFilter, true);
-      nh.param<bool>("/use_speckleFilter", use_speckleFilter, true);
+      nh.param<bool>("/use_spatialFilter", use_spatialFilter, false);
+      nh.param<bool>("/use_temporalFilter", use_temporalFilter, false);
+      nh.param<bool>("/use_speckleFilter", use_speckleFilter, false);
       nh.param("/spatialFilter_holefilling_radius", spatialFilter_holefilling_radius, 2);
       nh.param("/spatialFilter_iteration_num", spatialFilter_iteration_num, 1);
       nh.param<float>("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
@@ -279,6 +279,9 @@ void oakd_ros_class::main_initialize(){
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setFps(fps_stereo_depth);
 
+    monoLeft->out.link(xoutLeft->input);
+    monoRight->out.link(xoutRight->input);
+
     if (get_stereo_depth || get_pointcloud){
       std::shared_ptr<dai::node::StereoDepth> stereodepth = pipeline.create<dai::node::StereoDepth>();
       std::shared_ptr<dai::node::XLinkOut> xoutDepth      = pipeline.create<dai::node::XLinkOut>();
@@ -304,6 +307,7 @@ void oakd_ros_class::main_initialize(){
         depth_config.postProcessing.temporalFilter.enable = true;
         depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
         depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
+        // depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_8_OUT_OF_8;
       }
       if (use_speckleFilter){
         depth_config.postProcessing.speckleFilter.enable = true;
@@ -313,16 +317,12 @@ void oakd_ros_class::main_initialize(){
 
       monoLeft->out.link(stereodepth->left);
       monoRight->out.link(stereodepth->right);
-      stereodepth->syncedLeft.link(xoutLeft->input);
-      stereodepth->syncedRight.link(xoutRight->input);
+      // stereodepth->syncedLeft.link(xoutLeft->input);
+      // stereodepth->syncedRight.link(xoutRight->input);
       stereodepth->depth.link(xoutDepth->input);
       
       depth_width = monoRight->getResolutionWidth();
       depth_height= monoRight->getResolutionHeight();
-    }
-    else{
-      monoLeft->out.link(xoutLeft->input);
-      monoRight->out.link(xoutRight->input);
     }
   }
   if(!get_stereo_ir && (get_stereo_depth || get_pointcloud)){
@@ -361,6 +361,7 @@ void oakd_ros_class::main_initialize(){
       depth_config.postProcessing.temporalFilter.enable = true;
       depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
       depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
+      // depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_8_OUT_OF_8;
     }
     if (use_speckleFilter){
       depth_config.postProcessing.speckleFilter.enable = true;

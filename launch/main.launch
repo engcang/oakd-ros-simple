@@ -23,7 +23,7 @@
   <param name="/depth_confidence" value="175"/>  <!-- 0~255 -->
   <param name="/bilateral_sigma" value="3"/>  <!-- 0 ~ 65535, depth filter -->
   <param name="/use_spatialFilter" value="true"/> 
-      <param name="/spatialFilter_holefilling_radius" value="2"/> 
+      <param name="/spatialFilter_holefilling_radius" value="4"/> 
       <param name="/spatialFilter_iteration_num" value="1"/> 
       <param name="/spatialFilter_alpha" value="0.5"/> 
   <param name="/use_temporalFilter" value="true"/> 
