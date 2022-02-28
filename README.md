@@ -4,7 +4,7 @@
 
 <br>
 
-#### Check the result video - [here](https://youtu.be/0Wla_efIOn0)
+#### Check the result video - [here: OAKD, OAKD-Lite, D435i](https://youtu.be/0Wla_efIOn0), [here: OAKD-PRO, OAKD-Lite, D435i](https://youtu.be/t-4HMUlV5pQ)
 
   <p align="left">
   <img src="pcl.png" width="400"/>
