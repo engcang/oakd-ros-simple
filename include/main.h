@@ -59,22 +59,29 @@ class oakd_ros_class{
 
     string path;
 
+    /// messages for publishing
     sensor_msgs::Image l_img_msg, r_img_msg, rgb_img_msg, depth_img_msg, nn_img_msg;
     sensor_msgs::CompressedImage l_img_comp_msg, r_img_comp_msg, rgb_img_comp_msg, nn_img_comp_msg;
 
     bool initialized=false;
     bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_YOLO, get_pointcloud, get_raw, get_compressed;
+
     string topic_prefix, blob_file, class_file;
     int fps_IMU, infer_img_width, infer_img_height, class_num, thread_num, bilateral_sigma, depth_confidence;
     double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range;
     vector<string> class_names;
-    //for PCL, calib data
+
+    // for PCL, calib data
     vector<vector<float>> intrinsics;
     int depth_width, depth_height;
  
+    // Depth post processing
     bool use_spatialFilter, use_temporalFilter, use_speckleFilter;
     float spatialFilter_alpha, temporalFilter_alpha;
     int spatialFilter_holefilling_radius, spatialFilter_iteration_num, speckleFilter_range;
+
+    // PRO version IR and LED
+    float IR_laser_brightness_mA, LED_illuminator_brightness_mA;
 
     ///// ros and tf
     ros::NodeHandle nh;
@@ -89,25 +96,22 @@ class oakd_ros_class{
       nh.param("/fps_rgb_yolo", fps_rgb_yolo, 30.0);
       nh.param("/fps_stereo_depth", fps_stereo_depth, 30.0);
       nh.param("/fps_IMU", fps_IMU, 200);
+
       nh.param<bool>("/get_raw", get_raw, false);
       nh.param<bool>("/get_compressed", get_compressed, false);
+      
       nh.param<bool>("/get_imu", get_imu, false);
       nh.param<bool>("/get_rgb", get_rgb, false);
       nh.param<bool>("/get_stereo_ir", get_stereo_ir, false);
       nh.param<bool>("/get_stereo_depth", get_stereo_depth, false);
       nh.param<bool>("/get_pointcloud", get_pointcloud, false);
-      nh.param("/pcl_max_range", pcl_max_range, 6.0);
       nh.param<bool>("/get_YOLO", get_YOLO, false);
+
+      nh.param("/pcl_max_range", pcl_max_range, 6.0);
       nh.param("/thread_num", thread_num, 3);
       nh.param("/bilateral_sigma", bilateral_sigma, 500);
+      
       nh.param("/depth_confidence", depth_confidence, 200);
-      nh.param<std::string>("/blob_file", blob_file, "/blob_files/tiny-yolo-v4.blob");
-      nh.param<std::string>("/class_file", class_file, "/blob_files/class.txt");
-      nh.param("/infer_img_width", infer_img_width, 416);
-      nh.param("/infer_img_height", infer_img_height, 416);
-      nh.param("/class_num", class_num, 80);
-      nh.param("/confidence_threshold", confidence_threshold, 0.7);
-      nh.param("/iou_threshold", iou_threshold, 0.7);
       nh.param<bool>("/use_spatialFilter", use_spatialFilter, false);
       nh.param<bool>("/use_temporalFilter", use_temporalFilter, false);
       nh.param<bool>("/use_speckleFilter", use_speckleFilter, false);
@@ -116,6 +120,18 @@ class oakd_ros_class{
       nh.param<float>("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
       nh.param<float>("/temporalFilter_alpha", temporalFilter_alpha, 0.4);
       nh.param("/speckleFilter_range", speckleFilter_range, 50);
+      
+      nh.param<std::string>("/blob_file", blob_file, "/blob_files/tiny-yolo-v4.blob");
+      nh.param<std::string>("/class_file", class_file, "/blob_files/class.txt");
+      nh.param("/infer_img_width", infer_img_width, 416);
+      nh.param("/infer_img_height", infer_img_height, 416);
+      nh.param("/class_num", class_num, 80);
+      nh.param("/confidence_threshold", confidence_threshold, 0.7);
+      nh.param("/iou_threshold", iou_threshold, 0.7);
+
+      nh.param<float>("/IR_laser_brightness_mA", IR_laser_brightness_mA, 0.0);
+      nh.param<float>("/LED_illuminator_brightness_mA", LED_illuminator_brightness_mA, 0.0);
+
 
       ///// sub pub
       if (get_rgb){
@@ -147,6 +163,7 @@ class oakd_ros_class{
       }
       if (get_imu)
         imu_pub = nh.advertise<sensor_msgs::Imu>(topic_prefix+"/imu",10);
+
 
       ///// Init
       path = ros::package::getPath("oakd_ros");

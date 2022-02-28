@@ -1,6 +1,8 @@
 #include "main.h"
 #include <thread>
 
+
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "oakd_ros_node");
@@ -10,30 +12,38 @@ int main(int argc, char **argv)
   signal(SIGINT, signal_handler); // to exit program when ctrl+c
 
 
-
+  ///// Generating and connecting device handler with pipeline
   dai::Device device(oak_handler.pipeline);
-  cout << "Usb speed: " << device.getUsbSpeed() << endl;
-
-  cv::Mat FrameLeft, FrameRight, FrameDepth, FrameDepthColor, FrameRgb, FrameDetect;
-  auto color = cv::Scalar(0, 255, 0);
-
-  /// for point cloud
-  dai::CalibrationHandler calibData = device.readCalibration();
-  oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, oak_handler.depth_width, oak_handler.depth_height);
-
-  double fx = oak_handler.intrinsics[0][0]; double cx = oak_handler.intrinsics[0][2];
-  double fy = oak_handler.intrinsics[1][1]; double cy = oak_handler.intrinsics[1][2];
-  // for(auto row : oak_handler.intrinsics) {
-  //     for(auto val : row) cout << val << "  ";
-  //     cout << endl;
-  // }
-
+  
   while(!oak_handler.initialized){
     usleep(50000);
   }
 
-  std::thread imu_thread, rgb_thread, yolo_thread, stereo_thread, depth_pcl_thread;
 
+  ///// setting others
+  // YOLO bounding box color
+  auto color = cv::Scalar(255, 0, 255);
+
+  // IR laser, LED illuminator of PRO version
+  bool if_IR_laser_emission = device.setIrLaserDotProjectorBrightness(oak_handler.IR_laser_brightness_mA);
+  bool if_IR_flood_emission = device.setIrFloodLightBrightness(oak_handler.LED_illuminator_brightness_mA);
+
+  cout << "Usb speed: " << device.getUsbSpeed() << endl;
+  cout << "Laser: " << if_IR_laser_emission << " , Flood: " << if_IR_flood_emission << endl;
+
+  ///// obtained data
+  cv::Mat FrameLeft, FrameRight, FrameDepth, FrameDepthColor, FrameRgb, FrameDetect;
+
+  ///// for point cloud
+  dai::CalibrationHandler calibData = device.readCalibration();
+  oak_handler.intrinsics=calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, oak_handler.depth_width, oak_handler.depth_height);
+  double fx = oak_handler.intrinsics[0][0]; double cx = oak_handler.intrinsics[0][2];
+  double fy = oak_handler.intrinsics[1][1]; double cy = oak_handler.intrinsics[1][2];
+  
+
+
+  ///// threads to get each data
+  std::thread imu_thread, rgb_thread, yolo_thread, stereo_thread, depth_pcl_thread;
 
   if (oak_handler.get_imu){
     std::shared_ptr<dai::DataOutputQueue> imuQueue = device.getOutputQueue("imu", 50, false);

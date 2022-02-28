@@ -31,7 +31,12 @@
   <param name="/use_speckleFilter" value="true"/> 
       <param name="/speckleFilter_range" value="50"/> 
 
-<!-- setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->
+  <!-- IR laser, LED illuminator for PRO version -->
+  <param name="/IR_laser_brightness_mA" value="600.0"/>  <!-- 0.0:Not use, 765mA at 30% duty cycle, (MAX)1200mA at 6% duty cycle -->
+  <param name="/LED_illuminator_brightness_mA" value="900.0"/> <!-- 0.0:Not use, (MAX)1500mA at 30% duty cycle -->
+
+
+  <!-- YOLO: setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->
   <param name="/get_YOLO" value="true"/>
   <param name="/thread_num" value="1"/>  <!-- best is 2 -->
   <param name="/blob_file" value="/blob_files/tiny-yolo-v4.blob"/>
