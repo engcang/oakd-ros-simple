@@ -3,12 +3,12 @@
 
   <param name="/topic_prefix" value="/oakd"/> 
   <param name="/fps_rgb_yolo" value="30.0"/> <!-- data rate -->
-  <param name="/fps_stereo_depth" value="30.0"/> <!-- data rate -->
+  <param name="/fps_stereo_depth" value="15.0"/> <!-- data rate -->
   <param name="/fps_IMU" value="100"/> <!-- data rate, integer -->
 
   <!-- image type - getting raw and compressed both is possible -->
-  <param name="/get_raw" value="false"/> 
-  <param name="/get_compressed" value="true"/> 
+  <param name="/get_raw" value="true"/> 
+  <param name="/get_compressed" value="false"/> 
 
   <!-- use or not -->
   <param name="/get_imu" value="true"/> 
@@ -32,8 +32,8 @@
       <param name="/speckleFilter_range" value="50"/> 
 
   <!-- IR laser, LED illuminator for PRO version -->
-  <param name="/IR_laser_brightness_mA" value="600.0"/>  <!-- 0.0:Not use, 765mA at 30% duty cycle, (MAX)1200mA at 6% duty cycle -->
-  <param name="/LED_illuminator_brightness_mA" value="900.0"/> <!-- 0.0:Not use, (MAX)1500mA at 30% duty cycle -->
+  <param name="/IR_laser_brightness_mA" value="650.0"/>  <!-- 0.0:Not use, 765mA at 30% duty cycle, (MAX)1200mA at 6% duty cycle -->
+  <param name="/LED_illuminator_brightness_mA" value="950.0"/> <!-- 0.0:Not use, (MAX)1500mA at 30% duty cycle -->
 
 
   <!-- YOLO: setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->

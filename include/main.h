@@ -182,7 +182,7 @@ void oakd_ros_class::main_initialize(){
     std::shared_ptr<dai::node::XLinkOut> xoutIMU = pipeline.create<dai::node::XLinkOut>();
     xoutIMU->setStreamName("imu");
 
-    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_CALIBRATED, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
+    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
     IMU_node->setBatchReportThreshold(1);
     IMU_node->setMaxBatchReports(28);
     IMU_node->out.link(xoutIMU->input);
@@ -305,7 +305,7 @@ void oakd_ros_class::main_initialize(){
       stereodepth->initialConfig.setLeftRightCheckThreshold(5);
       stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
       stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
-      stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
+      stereodepth->setDepthAlign(dai::CameraBoardSocket::LEFT); //default: Right
       // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
       stereodepth->setExtendedDisparity(false);
       stereodepth->setSubpixel(true);
@@ -364,7 +364,7 @@ void oakd_ros_class::main_initialize(){
     stereodepth->initialConfig.setLeftRightCheckThreshold(5);
     stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
     stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
-    stereodepth->setDepthAlign(dai::CameraBoardSocket::RIGHT); //default: Right
+    stereodepth->setDepthAlign(dai::CameraBoardSocket::LEFT); //default: Right
     // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
     stereodepth->setExtendedDisparity(false);
     stereodepth->setSubpixel(true);
