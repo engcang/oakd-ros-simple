@@ -1,10 +1,13 @@
 # OAK-D ROS Simple
 + OAK-D (OpenCV AI Kit camera) ROS simple codes with C++ for myself
 + Edited the original `depthai-ros-examples` repo from official manufacturer - [link](https://github.com/luxonis/depthai-ros-examples)
++ Supports: OAK-D, OAK-D Lite, OAK-D PRO
 
 <br>
 
-#### Check the result video - [here: OAKD, OAKD-Lite, D435i](https://youtu.be/0Wla_efIOn0), [here: OAKD-PRO, OAKD-Lite, D435i](https://youtu.be/t-4HMUlV5pQ)
+### Check the result video
+#### Video1: [OAKD, OAKD-Lite, D435i](https://youtu.be/0Wla_efIOn0)
+#### Video2: [OAKD-PRO, OAKD-Lite, D435i](https://youtu.be/t-4HMUlV5pQ)
 
   <p align="left">
   <img src="pcl.png" width="400"/>
