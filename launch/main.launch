@@ -2,8 +2,8 @@
 <launch>
 
   <param name="/topic_prefix" value="/oakd"/> 
-  <param name="/fps_rgb_yolo" value="30.0"/> <!-- data rate -->
-  <param name="/fps_stereo_depth" value="30.0"/> <!-- data rate -->
+  <param name="/fps_rgb_yolo" value="20.0"/> <!-- data rate -->
+  <param name="/fps_stereo_depth" value="20.0"/> <!-- data rate -->
   <param name="/fps_IMU" value="100"/> <!-- data rate, integer -->
 
   <!-- image type - getting raw and compressed both is possible -->
@@ -24,17 +24,19 @@
   <param name="/depth_confidence" value="175"/>  <!-- 0~255 -->
   <param name="/bilateral_sigma" value="3"/>  <!-- 0 ~ 65535, depth filter -->
   <param name="/use_spatialFilter" value="true"/> 
-      <param name="/spatialFilter_holefilling_radius" value="4"/> 
+      <param name="/spatialFilter_holefilling_radius" value="2"/> 
       <param name="/spatialFilter_iteration_num" value="1"/> 
-      <param name="/spatialFilter_alpha" value="0.5"/> 
+      <param name="/spatialFilter_alpha" value="0.5"/> <!-- 0.0: infinite filter, 1.0: non-filter-->
+      <param name="/spatialFilter_delta" value="20"/> 
   <param name="/use_temporalFilter" value="true"/> 
-      <param name="/temporalFilter_alpha" value="0.4"/> 
+      <param name="/temporalFilter_alpha" value="0.4"/> <!-- 0.0: infinite filter, 1.0: non-filter--> 
+      <param name="/temporalFilter_delta" value="20"/> 
   <param name="/use_speckleFilter" value="true"/> 
       <param name="/speckleFilter_range" value="200"/> 
 
   <!-- IR laser, LED illuminator for PRO version -->
-  <param name="/IR_laser_brightness_mA" value="600.0"/>  <!-- 0.0:Not use, 765mA at 30% duty cycle, (MAX)1200mA at 6% duty cycle -->
-  <param name="/LED_illuminator_brightness_mA" value="900.0"/> <!-- 0.0:Not use, (MAX)1500mA at 30% duty cycle -->
+  <param name="/IR_laser_brightness_mA" value="0.0"/>  <!-- 0.0:Not use, 765mA at 30% duty cycle, (MAX)1200mA at 6% duty cycle -->
+  <param name="/LED_illuminator_brightness_mA" value="0.0"/> <!-- 0.0:Not use, (MAX)1500mA at 30% duty cycle -->
 
 
   <!-- YOLO: setCoordinateSize, setAnchors, setAnchorMasks should be directly edited in main.h file -->

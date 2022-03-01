@@ -78,6 +78,7 @@ class oakd_ros_class{
     // Depth post processing
     bool use_spatialFilter, use_temporalFilter, use_speckleFilter;
     float spatialFilter_alpha, temporalFilter_alpha;
+    int spatialFilter_delta, temporalFilter_delta;
     int spatialFilter_holefilling_radius, spatialFilter_iteration_num, speckleFilter_range;
 
     // PRO version IR and LED
@@ -119,7 +120,9 @@ class oakd_ros_class{
       nh.param("/spatialFilter_holefilling_radius", spatialFilter_holefilling_radius, 2);
       nh.param("/spatialFilter_iteration_num", spatialFilter_iteration_num, 1);
       nh.param<float>("/spatialFilter_alpha", spatialFilter_alpha, 0.5);
+      nh.param("/spatialFilter_delta", spatialFilter_delta, 20);
       nh.param<float>("/temporalFilter_alpha", temporalFilter_alpha, 0.4);
+      nh.param("/temporalFilter_delta", temporalFilter_delta, 20);
       nh.param("/speckleFilter_range", speckleFilter_range, 50);
       
       nh.param<std::string>("/blob_file", blob_file, "/blob_files/tiny-yolo-v4.blob");
@@ -303,7 +306,7 @@ void oakd_ros_class::main_initialize(){
 
       stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
       stereodepth->setLeftRightCheck(true);
-      stereodepth->initialConfig.setLeftRightCheckThreshold(5);
+      stereodepth->initialConfig.setLeftRightCheckThreshold(10);
       stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
       stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
       stereodepth->setDepthAlign(dai::CameraBoardSocket::LEFT); //default: Right
@@ -313,18 +316,23 @@ void oakd_ros_class::main_initialize(){
 
       dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
       if (use_spatialFilter){
+        ROS_WARN("SPATIAL FILTER");
         depth_config.postProcessing.spatialFilter.enable = true;
         depth_config.postProcessing.spatialFilter.holeFillingRadius = spatialFilter_holefilling_radius;
         depth_config.postProcessing.spatialFilter.numIterations = spatialFilter_iteration_num;
         depth_config.postProcessing.spatialFilter.alpha = spatialFilter_alpha;
+        depth_config.postProcessing.spatialFilter.delta = spatialFilter_delta;
       }
       if (use_temporalFilter){
+        ROS_WARN("TEMPORAL FILTER");
         depth_config.postProcessing.temporalFilter.enable = true;
         depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
+        depth_config.postProcessing.temporalFilter.delta = temporalFilter_delta;
         depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
         // depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_8_OUT_OF_8;
       }
       if (use_speckleFilter){
+        ROS_WARN("SPECKLE FILTER");
         depth_config.postProcessing.speckleFilter.enable = true;
         depth_config.postProcessing.speckleFilter.speckleRange = speckleFilter_range;
       }
@@ -363,7 +371,7 @@ void oakd_ros_class::main_initialize(){
 
     stereodepth->initialConfig.setConfidenceThreshold(depth_confidence);
     stereodepth->setLeftRightCheck(true);
-    stereodepth->initialConfig.setLeftRightCheckThreshold(5);
+    stereodepth->initialConfig.setLeftRightCheckThreshold(10);
     stereodepth->initialConfig.setBilateralFilterSigma(bilateral_sigma);
     stereodepth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereodepth->setDepthAlign(dai::CameraBoardSocket::LEFT); //default: Right
@@ -373,18 +381,23 @@ void oakd_ros_class::main_initialize(){
 
     dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
     if (use_spatialFilter){
+      ROS_WARN("SPATIAL FILTER");
       depth_config.postProcessing.spatialFilter.enable = true;
       depth_config.postProcessing.spatialFilter.holeFillingRadius = spatialFilter_holefilling_radius;
       depth_config.postProcessing.spatialFilter.numIterations = spatialFilter_iteration_num;
       depth_config.postProcessing.spatialFilter.alpha = spatialFilter_alpha;
+      depth_config.postProcessing.spatialFilter.alpha = spatialFilter_alpha;
     }
     if (use_temporalFilter){
+      ROS_WARN("TEMPORAL FILTER");
       depth_config.postProcessing.temporalFilter.enable = true;
       depth_config.postProcessing.temporalFilter.alpha = temporalFilter_alpha;
+      depth_config.postProcessing.temporalFilter.delta = temporalFilter_delta;
       depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4;
       // depth_config.postProcessing.temporalFilter.persistencyMode = dai::RawStereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_8_OUT_OF_8;
     }
     if (use_speckleFilter){
+      ROS_WARN("SPECKLE FILTER");
       depth_config.postProcessing.speckleFilter.enable = true;
       depth_config.postProcessing.speckleFilter.speckleRange = speckleFilter_range;
     }
