@@ -8,6 +8,7 @@
 ### Check the result video
 #### Video1: [OAKD, OAKD-Lite, D435i](https://youtu.be/0Wla_efIOn0)
 #### Video2: [OAKD-PRO, OAKD-Lite, D435i](https://youtu.be/t-4HMUlV5pQ)
+#### Video3: [OAK-D Pro depth after filter parameters got tuned](https://youtu.be/I4n7haVlMug)
 
   <p align="left">
   <img src="pcl.png" width="400"/>
