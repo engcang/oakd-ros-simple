@@ -218,7 +218,7 @@ int main(int argc, char **argv)
             for (int i = 0; i < FrameDepth.rows; ++i){
               for (int j = 0; j < FrameDepth.cols; ++j){
                 float temp_depth = FrameDepth.at<ushort>(i,j);
-                if (temp_depth/1000.0 >= 0.08 and temp_depth/1000.0 <= oak_handler.pcl_max_range){
+                if (temp_depth/1000.0 >= oak_handler.pcl_min_range and temp_depth/1000.0 <= oak_handler.pcl_max_range){
                   pcl::PointXYZ p3d;
                   p3d.z = (temp_depth/1000.0); //float!!! double makes error here!!! because encoding is "32FC", float
                   p3d.x = ( j - cx ) * p3d.z / fx;

@@ -68,7 +68,7 @@ class oakd_ros_class{
 
     string topic_prefix, blob_file, class_file;
     int fps_IMU, infer_img_width, infer_img_height, class_num, thread_num, bilateral_sigma, depth_confidence;
-    double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range;
+    double fps_rgb_yolo, fps_stereo_depth, confidence_threshold, iou_threshold, pcl_max_range, pcl_min_range;
     vector<string> class_names;
 
     // for PCL, calib data
@@ -108,6 +108,7 @@ class oakd_ros_class{
       nh.param<bool>("/get_YOLO", get_YOLO, false);
 
       nh.param("/pcl_max_range", pcl_max_range, 6.0);
+      nh.param("/pcl_min_range", pcl_min_range, 0.3);
       nh.param("/thread_num", thread_num, 3);
       nh.param("/bilateral_sigma", bilateral_sigma, 500);
       
@@ -309,6 +310,7 @@ void oakd_ros_class::main_initialize(){
       // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
       stereodepth->setExtendedDisparity(false);
       stereodepth->setSubpixel(true);
+
       dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
       if (use_spatialFilter){
         depth_config.postProcessing.spatialFilter.enable = true;
@@ -368,6 +370,7 @@ void oakd_ros_class::main_initialize(){
     // stereodepth->setRectifyEdgeFillColor(0); // black, to better see the cutout
     stereodepth->setExtendedDisparity(false);
     stereodepth->setSubpixel(true);
+
     dai::RawStereoDepthConfig depth_config = stereodepth->initialConfig.get();
     if (use_spatialFilter){
       depth_config.postProcessing.spatialFilter.enable = true;
