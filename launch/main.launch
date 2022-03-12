@@ -22,7 +22,7 @@
   <param name="/pcl_max_range" value="6.0"/> <!-- [m] further than this value will not be published -->
   <param name="/pcl_min_range" value="0.3"/> <!-- [m] closer than this value will not be published -->
   <param name="/depth_confidence" value="175"/>  <!-- 0~255 -->
-  <param name="/bilateral_sigma" value="3"/>  <!-- 0 ~ 65535, depth filter -->
+  <param name="/bilateral_sigma" value="5"/>  <!-- 0 ~ 65535, depth filter -->
   <param name="/use_spatialFilter" value="true"/> 
       <param name="/spatialFilter_holefilling_radius" value="2"/> 
       <param name="/spatialFilter_iteration_num" value="1"/> 

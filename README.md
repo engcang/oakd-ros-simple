@@ -63,5 +63,7 @@ $ catkin build
 
 + Change the parameters in the `.launch` file.
 ~~~shell
+$ roscore
+$ roscd oakd_ros && rviz -d rviz.rviz
 $ roslaunch oakd_ros main.launch
 ~~~
