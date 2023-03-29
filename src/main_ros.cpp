@@ -25,8 +25,12 @@ int main(int argc, char **argv)
   auto color = cv::Scalar(255, 0, 255);
 
   // IR laser, LED illuminator of PRO version
-  bool if_IR_laser_emission = device.setIrLaserDotProjectorBrightness(oak_handler.IR_laser_brightness_mA);
-  bool if_IR_flood_emission = device.setIrFloodLightBrightness(oak_handler.LED_illuminator_brightness_mA);
+  bool if_IR_laser_emission = false;
+  bool if_IR_flood_emission = false;
+  if (oak_handler.IR_laser_brightness_mA != 0.0 )
+    if_IR_laser_emission = device.setIrLaserDotProjectorBrightness(oak_handler.IR_laser_brightness_mA);
+  if (oak_handler.LED_illuminator_brightness_mA != 0.0 )
+    if_IR_flood_emission = device.setIrFloodLightBrightness(oak_handler.LED_illuminator_brightness_mA);
 
   cout << "Usb speed: " << device.getUsbSpeed() << endl;
   cout << "Laser: " << if_IR_laser_emission << " , Flood: " << if_IR_flood_emission << endl;
@@ -54,7 +58,7 @@ int main(int argc, char **argv)
           for (int i = 0; i < inPassIMU->packets.size(); ++i)
           {
             sensor_msgs::Imu imu_msg;
-            imu_msg.header.frame_id = oak_handler.topic_prefix+"_frame";
+            imu_msg.header.frame_id = "oakd_frame";
             imu_msg.header.stamp = ros::Time::now();
             dai::IMUPacket imuPackets = inPassIMU->packets[i];
             
@@ -227,7 +231,7 @@ int main(int argc, char **argv)
                 }
               }
             }
-            oak_handler.pcl_pub.publish(cloud2msg(depth_cvt_pcl, oak_handler.topic_prefix+"_frame"));
+            oak_handler.pcl_pub.publish(cloud2msg(depth_cvt_pcl, "oakd_frame"));
           }
         }
         std::chrono::milliseconds dura(2);
@@ -237,11 +241,11 @@ int main(int argc, char **argv)
   }
 
 
-  imu_thread.join();
-  rgb_thread.join();
-  yolo_thread.join();
-  stereo_thread.join();
-  depth_pcl_thread.join();
+  if (oak_handler.get_imu) imu_thread.join();
+  if (oak_handler.get_rgb) rgb_thread.join();
+  if (oak_handler.get_YOLO) yolo_thread.join();
+  if (oak_handler.get_stereo_ir) stereo_thread.join();
+  if (oak_handler.get_stereo_depth || oak_handler.get_pointcloud) depth_pcl_thread.join();
 
   ros::spin();
 

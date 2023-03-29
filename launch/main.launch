@@ -14,8 +14,8 @@
   <param name="/get_imu" value="true"/> 
   <param name="/get_rgb" value="false"/> 
 
-  <param name="/get_stereo_ir" value="true"/> 
-  <param name="/get_stereo_depth" value="true"/> 
+  <param name="/get_stereo_ir" value="false"/> 
+  <param name="/get_stereo_depth" value="false"/> 
   <param name="/get_pointcloud" value="true"/>
 
   <!-- depth post processing -->
