@@ -17,7 +17,7 @@
 <br>
 <br>
 
-## Requirements
+## Dependencies
 + `pcl`
 + `OpenCV`, `cv_bridge`: manual install? refer here [`OpenCV`](https://github.com/engcang/vins-application#-opencv-with-cuda-necessary-for-gpu-version-1), [`cv_bridge`](https://github.com/engcang/vins-application#-cv_bridge-with-built-opencv-necessary-for-whom-built-opencv-manually-from-above)
 + `usb-1.0-0-dev`
