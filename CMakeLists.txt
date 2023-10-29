@@ -56,3 +56,6 @@ include_directories(
 
 add_executable(${PROJECT_NAME}_node src/main_ros.cpp)
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)
+
+add_executable(${PROJECT_NAME}_test src/test.cpp)
+target_link_libraries(${PROJECT_NAME}_test ${catkin_LIBRARIES} ${OpenCV_LIBS} depthai::core depthai::opencv)
