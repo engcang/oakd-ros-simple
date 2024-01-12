@@ -64,7 +64,7 @@ class oakd_ros_class{
     sensor_msgs::CompressedImage l_img_comp_msg, r_img_comp_msg, rgb_img_comp_msg, nn_img_comp_msg;
 
     bool initialized=false;
-    bool get_imu, get_stereo_ir, get_rgb, get_stereo_depth, get_YOLO, get_pointcloud, get_raw, get_compressed;
+    bool get_imu, get_imu_rotation, get_stereo_ir, get_rgb, get_stereo_depth, get_YOLO, get_pointcloud, get_raw, get_compressed;
 
     string topic_prefix, blob_file, class_file;
     int fps_IMU, infer_img_width, infer_img_height, class_num, thread_num, bilateral_sigma, depth_confidence;
@@ -102,6 +102,7 @@ class oakd_ros_class{
       nh.param<bool>("/get_compressed", get_compressed, false);
       
       nh.param<bool>("/get_imu", get_imu, false);
+      nh.param<bool>("/get_imu_rotation", get_imu_rotation, false);
       nh.param<bool>("/get_rgb", get_rgb, false);
       nh.param<bool>("/get_stereo_ir", get_stereo_ir, false);
       nh.param<bool>("/get_stereo_depth", get_stereo_depth, false);
@@ -186,7 +187,14 @@ void oakd_ros_class::main_initialize(){
     std::shared_ptr<dai::node::XLinkOut> xoutIMU = pipeline.create<dai::node::XLinkOut>();
     xoutIMU->setStreamName("imu");
 
-    IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
+    if (get_imu_rotation)
+    {
+      IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW, dai::IMUSensor::ROTATION_VECTOR}, fps_IMU);
+    }
+    else
+    {
+      IMU_node->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, fps_IMU);
+    }    
     IMU_node->setBatchReportThreshold(1);
     IMU_node->setMaxBatchReports(28);
     IMU_node->out.link(xoutIMU->input);

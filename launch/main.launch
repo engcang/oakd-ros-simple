@@ -12,6 +12,7 @@
 
   <!-- use or not -->
   <param name="/get_imu" value="true"/> 
+  <param name="/get_imu_rotation" value="false"/>  <!-- get orientation from IMU, set false if error from IMU, check https://github.com/engcang/oakd-ros-simple/issues/5#issuecomment-1883063872 -->
   <param name="/get_rgb" value="false"/> 
 
   <param name="/get_stereo_ir" value="false"/> 

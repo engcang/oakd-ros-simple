@@ -64,15 +64,16 @@ int main(int argc, char **argv)
             
             dai::IMUReportAccelerometer accelVal = imuPackets.acceleroMeter;
             dai::IMUReportGyroscope gyro_val = imuPackets.gyroscope;
-            dai::IMUReportRotationVectorWAcc rotation_val = imuPackets.rotationVector;
 
             imu_msg.linear_acceleration.x = accelVal.x; imu_msg.linear_acceleration.y = accelVal.y; imu_msg.linear_acceleration.z = accelVal.z;
           
             imu_msg.angular_velocity.x = gyro_val.x; imu_msg.angular_velocity.y = gyro_val.y; imu_msg.angular_velocity.z = gyro_val.z;
-
-            imu_msg.orientation.x = rotation_val.i; imu_msg.orientation.y = rotation_val.j;
-            imu_msg.orientation.z = rotation_val.k; imu_msg.orientation.w = rotation_val.real;
-
+            if (oak_handler.get_imu_rotation)
+            {
+              dai::IMUReportRotationVectorWAcc rotation_val = imuPackets.rotationVector;
+              imu_msg.orientation.x = rotation_val.i; imu_msg.orientation.y = rotation_val.j;
+              imu_msg.orientation.z = rotation_val.k; imu_msg.orientation.w = rotation_val.real;
+            }
             oak_handler.imu_pub.publish(imu_msg);
           }
         }
